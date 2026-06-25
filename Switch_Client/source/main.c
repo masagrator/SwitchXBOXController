@@ -242,6 +242,8 @@ int main(int argc, char* argv[]) {
         data[3] = joystickRight.y >> 8;
         data[4] = joystickRight.y & 0xFF;
         sendto(s, data, 5 , 0 , (struct sockaddr *) &si_other, slen);
+
+        svcSleepThread(15'151'515);
     }
 
   consoleExit(NULL);
