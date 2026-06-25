@@ -152,6 +152,12 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "inet_aton() failed\n");
     }
 
+    for (size_t i = 0; i < 8; i++) {
+      hidEnableUnintendedHomeButtonInputProtection(i, true);
+    }
+    hidEnableUnintendedHomeButtonInputProtection(0x10, true);
+    hidEnableUnintendedHomeButtonInputProtection(0x20, true);
+
     while (appletMainLoop()) {
         padUpdate(&pad);
         u64 kHeld = padGetButtons(&pad);
@@ -245,6 +251,12 @@ int main(int argc, char* argv[]) {
 
         svcSleepThread(15'151'515);
     }
+
+  for (size_t i = 0; i < 8; i++) {
+    hidEnableUnintendedHomeButtonInputProtection(i, false);
+  }
+  hidEnableUnintendedHomeButtonInputProtection(0x10, false);
+  hidEnableUnintendedHomeButtonInputProtection(0x20, false);
 
   consoleExit(NULL);
 
