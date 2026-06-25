@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 #define PORT 8192
-#define CPU_CLOCK 50E6 //50 MHz should be a BIG improvement in battery life if the console is used in handheld mode
 
 char ipAddress[16];
 u8 data[5];
