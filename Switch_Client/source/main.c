@@ -86,52 +86,49 @@ int main(int argc, char* argv[]) {
 	printf("If UDP broadcasting does not work for you, use the IP of your computer instead.\n");
 	printf("Use the DPAD to enter the IP address bellow and press the A button to connect.\n");
 	printf("ZL/ZR can be used to decrement/increment the IP by 10.\n");
+  printf("Press A for standard Nintendo Switch button layout.\n");
+  printf("Press X for Xbox 360 button layout.\n");
 
 	consoleUpdate(NULL);
-	
-  //Underclock the CPU
-  if (hosversionBefore(8, 0, 0)) {
-    pcvInitialize();
-	pcvSetClockRate(PcvModule_CpuBus, CPU_CLOCK); 
-  }
-  else {
-    ClkrstSession clkrstSession;
-    clkrstInitialize();
-    clkrstOpenSession(&clkrstSession, PcvModuleId_CpuBus, 3);
-    clkrstSetClockRate(&clkrstSession, CPU_CLOCK);
-	clkrstCloseSession(&clkrstSession);
-  }
+
 	appletSetScreenShotPermission(0); //Disable the screenshot function because it is not needed for the program
 
   padConfigureInput(1, HidNpadStyleSet_NpadStandard);
   PadState pad;
   padInitializeDefault(&pad);
 
+  bool nintendoButtons = false;
     while (1)
     {
-        padUpdate(&pad);
-        u64 kDown = padGetButtonsDown(&pad);
+      padUpdate(&pad);
+      u64 kDown = padGetButtonsDown(&pad);
 
-		if (currentIpBlock == 0) printf("\x1b[11;1HCurrent IP Adress: [%d].%d.%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
-		if (currentIpBlock == 1) printf("\x1b[11;1HCurrent IP Adress: %d.[%d].%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
-		if (currentIpBlock == 2) printf("\x1b[11;1HCurrent IP Adress: %d.%d.[%d].%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
-		if (currentIpBlock == 3) printf("\x1b[11;1HCurrent IP Adress: %d.%d.%d.[%d]\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
+      if (currentIpBlock == 0) printf("\x1b[11;1HCurrent IP Adress: [%d].%d.%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
+      if (currentIpBlock == 1) printf("\x1b[11;1HCurrent IP Adress: %d.[%d].%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
+      if (currentIpBlock == 2) printf("\x1b[11;1HCurrent IP Adress: %d.%d.[%d].%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
+      if (currentIpBlock == 3) printf("\x1b[11;1HCurrent IP Adress: %d.%d.%d.[%d]\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
 
-		//Handle inputs
-		if (kDown & HidNpadButton_Up) ipBlocks[currentIpBlock]++;
-		if (kDown & HidNpadButton_Down) ipBlocks[currentIpBlock]--;
+      //Handle inputs
+      if (kDown & HidNpadButton_Up) ipBlocks[currentIpBlock]++;
+      if (kDown & HidNpadButton_Down) ipBlocks[currentIpBlock]--;
 
-		if (kDown & HidNpadButton_ZR) ipBlocks[currentIpBlock]+=10;
-		if (kDown & HidNpadButton_ZL) ipBlocks[currentIpBlock]-=10;
+      if (kDown & HidNpadButton_ZR) ipBlocks[currentIpBlock]+=10;
+      if (kDown & HidNpadButton_ZL) ipBlocks[currentIpBlock]-=10;
 
-		if (kDown & HidNpadButton_Right && currentIpBlock < 3) currentIpBlock++;
-		if (kDown & HidNpadButton_Left && currentIpBlock > 0) currentIpBlock--;
+      if (kDown & HidNpadButton_Right && currentIpBlock < 3) currentIpBlock++;
+      if (kDown & HidNpadButton_Left && currentIpBlock > 0) currentIpBlock--;
 
-        if (kDown & HidNpadButton_A) break;
+      if (kDown & HidNpadButton_A) {
+        nintendoButtons = true;
+        break;
+      }
+      if (kDown & HidNpadButton_X) {
+        break;
+      }
 
-		consoleUpdate(NULL);
+      consoleUpdate(NULL);
 
-		svcSleepThread(10E6);
+      svcSleepThread(10E6);
     }
     
     char computersIp[16];
@@ -179,11 +176,11 @@ int main(int argc, char* argv[]) {
         if (kHeld & HidNpadButton_Right) sendto(s, "\x4\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
             else sendto(s, "\x4\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
         //Minus button
-        if (kHeld & HidNpadButton_Minus) sendto(s, "\x5\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_Plus) : (kHeld & HidNpadButton_Minus)) sendto(s, "\x5\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x5\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Plus button
-        if (kHeld & HidNpadButton_Plus) sendto(s, "\x6\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_Minus) : (kHeld & HidNpadButton_Plus)) sendto(s, "\x6\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x6\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Left stick click
@@ -199,30 +196,30 @@ int main(int argc, char* argv[]) {
         else sendto(s, "\x9\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //R Shoulder
-        if (kHeld & HidNpadButton_ZR) sendto(s, "\xA\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_R) sendto(s, "\xA\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xA\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
-		/* Pro Controller work around */
-		if (kHeld & HidNpadButton_R)
-		{
-			if (kHeld & HidNpadButton_StickL) sendto(s, "\xB\x1", 2, 0, (struct sockaddr *) &si_other, slen);
-			else sendto(s, "\xB\x0", 2, 0, (struct sockaddr *) &si_other, slen);
-		}
+        /* Pro Controller work around */
+        if (kHeld & HidNpadButton_R)
+        {
+          if (kHeld & HidNpadButton_StickL) sendto(s, "\xB\x1", 2, 0, (struct sockaddr *) &si_other, slen);
+          else sendto(s, "\xB\x0", 2, 0, (struct sockaddr *) &si_other, slen);
+        }
 
         //A button
-        if (kHeld & HidNpadButton_A) sendto(s, "\xC\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_B) : (kHeld & HidNpadButton_A)) sendto(s, "\xC\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xC\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //B button
-        if (kHeld & HidNpadButton_B) sendto(s, "\xD\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_A) : (kHeld & HidNpadButton_B)) sendto(s, "\xD\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xD\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //X button
-        if (kHeld & HidNpadButton_X) sendto(s, "\xE\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_Y) : (kHeld & HidNpadButton_X)) sendto(s, "\xE\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xE\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Y Button
-        if (kHeld & HidNpadButton_Y) sendto(s, "\xF\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (nintendoButtons ? (kHeld & HidNpadButton_X) : (kHeld & HidNpadButton_Y)) sendto(s, "\xF\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xF\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //ZL Trigger
@@ -246,16 +243,9 @@ int main(int argc, char* argv[]) {
         data[3] = joystickRight.y >> 8;
         data[4] = joystickRight.y & 0xFF;
         sendto(s, data, 5 , 0 , (struct sockaddr *) &si_other, slen);
-
-        consoleUpdate(NULL);
     }
 
-    consoleExit(NULL);
-
-	if (hosversionBefore(7, 0, 0))
-		pcvExit();
-	else
-		clkrstExit();
+  consoleExit(NULL);
 
 	return 0;
 }
