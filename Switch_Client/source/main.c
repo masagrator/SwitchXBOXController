@@ -15,7 +15,6 @@
 
 char ipAddress[16];
 u8 data[5];
-JoystickPosition joystickLeft, joystickRight;
 
 void * get_in_addr(struct sockaddr *sa) {
   if (sa->sa_family == AF_INET) {
@@ -104,10 +103,14 @@ int main(int argc, char* argv[]) {
   }
 	appletSetScreenShotPermission(0); //Disable the screenshot function because it is not needed for the program
 
+  padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+  PadState pad;
+  padInitializeDefault(&pad);
+
     while (1)
     {
-        hidScanInput();
-        u64 kDown = hidKeysDown(CONTROLLER_P1_AUTO);
+        padUpdate(&pad);
+        u64 kDown = padGetButtonsDown(&pad);
 
 		if (currentIpBlock == 0) printf("\x1b[11;1HCurrent IP Adress: [%d].%d.%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
 		if (currentIpBlock == 1) printf("\x1b[11;1HCurrent IP Adress: %d.[%d].%d.%d\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
@@ -115,16 +118,16 @@ int main(int argc, char* argv[]) {
 		if (currentIpBlock == 3) printf("\x1b[11;1HCurrent IP Adress: %d.%d.%d.[%d]\t\t\n", ipBlocks[0], ipBlocks[1], ipBlocks[2], ipBlocks[3]);
 
 		//Handle inputs
-		if (kDown & KEY_DUP) ipBlocks[currentIpBlock]++;
-		if (kDown & KEY_DDOWN) ipBlocks[currentIpBlock]--;
+		if (kDown & HidNpadButton_Up) ipBlocks[currentIpBlock]++;
+		if (kDown & HidNpadButton_Down) ipBlocks[currentIpBlock]--;
 
-		if (kDown & KEY_ZR) ipBlocks[currentIpBlock]+=10;
-		if (kDown & KEY_ZL) ipBlocks[currentIpBlock]-=10;
+		if (kDown & HidNpadButton_ZR) ipBlocks[currentIpBlock]+=10;
+		if (kDown & HidNpadButton_ZL) ipBlocks[currentIpBlock]-=10;
 
-		if (kDown & KEY_DRIGHT && currentIpBlock < 3) currentIpBlock++;
-		if (kDown & KEY_DLEFT && currentIpBlock > 0) currentIpBlock--;
+		if (kDown & HidNpadButton_Right && currentIpBlock < 3) currentIpBlock++;
+		if (kDown & HidNpadButton_Left && currentIpBlock > 0) currentIpBlock--;
 
-        if (kDown & KEY_A) break;
+        if (kDown & HidNpadButton_A) break;
 
 		consoleUpdate(NULL);
 
@@ -154,98 +157,94 @@ int main(int argc, char* argv[]) {
     }
 
     while (appletMainLoop()) {
-        hidScanInput();
-        u64 kHeld = hidKeysHeld(CONTROLLER_P1_AUTO);
-
-        hidJoystickRead(&joystickLeft, CONTROLLER_P1_AUTO, JOYSTICK_LEFT);
-        hidJoystickRead(&joystickRight, CONTROLLER_P1_AUTO, JOYSTICK_RIGHT);
+        padUpdate(&pad);
+        u64 kHeld = padGetButtons(&pad);
+        
+        HidAnalogStickState joystickLeft = pad.sticks[0];
+        HidAnalogStickState joystickRight = pad.sticks[1];
 
         //DPAD Up
-        if (kHeld & KEY_DUP) sendto(s, "\x1\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Up) sendto(s, "\x1\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x1\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //DPAD Down
-        if (kHeld & KEY_DDOWN) sendto(s, "\x2\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Down) sendto(s, "\x2\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x2\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //DPAD Left
-        if (kHeld & KEY_DLEFT) sendto(s, "\x3\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Left) sendto(s, "\x3\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x3\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //DPAD Right
-        if (kHeld & KEY_DRIGHT) sendto(s, "\x4\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Right) sendto(s, "\x4\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
             else sendto(s, "\x4\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
         //Minus button
-        if (kHeld & KEY_MINUS) sendto(s, "\x5\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Minus) sendto(s, "\x5\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x5\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Plus button
-        if (kHeld & KEY_PLUS) sendto(s, "\x6\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Plus) sendto(s, "\x6\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x6\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Left stick click
-        if (kHeld & KEY_LSTICK) sendto(s, "\x7\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_StickL) sendto(s, "\x7\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x7\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
         
         //Right stick click
-        if (kHeld & KEY_RSTICK) sendto(s, "\x8\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_StickR) sendto(s, "\x8\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x8\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //L Shoulder
-        if (kHeld & KEY_L) sendto(s, "\x9\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_L) sendto(s, "\x9\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x9\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //R Shoulder
-        if (kHeld & KEY_R) sendto(s, "\xA\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_ZR) sendto(s, "\xA\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xA\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
-        
-        //Touchscreen touch (XBOX Button)
-        if (kHeld & KEY_TOUCH) sendto(s, "\xB\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
-        else sendto(s, "\xB\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
 		/* Pro Controller work around */
-		if (kHeld & KEY_R)
+		if (kHeld & HidNpadButton_R)
 		{
-			if (kHeld & KEY_LSTICK) sendto(s, "\xB\x1", 2, 0, (struct sockaddr *) &si_other, slen);
+			if (kHeld & HidNpadButton_StickL) sendto(s, "\xB\x1", 2, 0, (struct sockaddr *) &si_other, slen);
 			else sendto(s, "\xB\x0", 2, 0, (struct sockaddr *) &si_other, slen);
 		}
 
         //A button
-        if (kHeld & KEY_A) sendto(s, "\xC\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_A) sendto(s, "\xC\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xC\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //B button
-        if (kHeld & KEY_B) sendto(s, "\xD\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_B) sendto(s, "\xD\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xD\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //X button
-        if (kHeld & KEY_X) sendto(s, "\xE\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_X) sendto(s, "\xE\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xE\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //Y Button
-        if (kHeld & KEY_Y) sendto(s, "\xF\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_Y) sendto(s, "\xF\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\xF\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //ZL Trigger
-        if (kHeld & KEY_ZL) sendto(s, "\x10\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_ZL) sendto(s, "\x10\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x10\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         //ZR Trigger
-        if (kHeld & KEY_ZR) sendto(s, "\x11\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
+        if (kHeld & HidNpadButton_ZR) sendto(s, "\x11\x1", 2 , 0 , (struct sockaddr *) &si_other, slen);
         else sendto(s, "\x11\x0", 2 , 0 , (struct sockaddr *) &si_other, slen);
 
         data[0] = 0x12;
-        data[1] = joystickLeft.dx >> 8;
-        data[2] = joystickLeft.dx & 0xFF;
-        data[3] = joystickLeft.dy >> 8;
-        data[4] = joystickLeft.dy & 0xFF;
+        data[1] = joystickLeft.x >> 8;
+        data[2] = joystickLeft.x & 0xFF;
+        data[3] = joystickLeft.y >> 8;
+        data[4] = joystickLeft.y & 0xFF;
         sendto(s, data, 5 , 0 , (struct sockaddr *) &si_other, slen);
 
         data[0] = 0x13;
-        data[1] = joystickRight.dx >> 8;
-        data[2] = joystickRight.dx & 0xFF;
-        data[3] = joystickRight.dy >> 8;
-        data[4] = joystickRight.dy & 0xFF;
+        data[1] = joystickRight.x >> 8;
+        data[2] = joystickRight.x & 0xFF;
+        data[3] = joystickRight.y >> 8;
+        data[4] = joystickRight.y & 0xFF;
         sendto(s, data, 5 , 0 , (struct sockaddr *) &si_other, slen);
 
         consoleUpdate(NULL);
